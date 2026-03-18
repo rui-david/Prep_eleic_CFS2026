@@ -1,0 +1,119 @@
+import streamlit as st
+import sqlite3
+import bcrypt
+import pandas as pd
+
+# =========================
+# BASE DE DADOS
+# =========================
+conn = sqlite3.connect("database.db", check_same_thread=False)
+c = conn.cursor()
+
+# Criar tabelas
+c.execute('''CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                password TEXT,
+                voted INTEGER DEFAULT 0
+            )''')
+
+c.execute('''CREATE TABLE IF NOT EXISTS votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                choice TEXT
+            )''')
+
+conn.commit()
+
+# =========================
+# FUNÇÕES
+# =========================
+def add_user(username, password):
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    try:
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
+        conn.commit()
+        return True
+    except:
+        return False
+
+def login_user(username, password):
+    c.execute("SELECT password FROM users WHERE username=?", (username,))
+    data = c.fetchone()
+    if data and bcrypt.checkpw(password.encode(), data[0]):
+        return True
+    return False
+
+def has_voted(username):
+    c.execute("SELECT voted FROM users WHERE username=?", (username,))
+    return c.fetchone()[0] == 1
+
+def register_vote(choice, username):
+    c.execute("INSERT INTO votes (choice) VALUES (?)", (choice,))
+    c.execute("UPDATE users SET voted=1 WHERE username=?", (username,))
+    conn.commit()
+
+def get_results():
+    df = pd.read_sql_query("SELECT choice, COUNT(*) as votos FROM votes GROUP BY choice", conn)
+    return df
+
+# =========================
+# INTERFACE
+# =========================
+st.title("🗳 Sistema de Votação do Clube")
+
+menu = ["Login", "Registar", "Admin"]
+choice = st.sidebar.selectbox("Menu", menu)
+
+# =========================
+# LOGIN
+# =========================
+if choice == "Login":
+    st.subheader("Login")
+
+    username = st.text_input("Número de sócio")
+    password = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+        if login_user(username, password):
+            st.success(f"Bem-vindo {username}")
+
+            if has_voted(username):
+                st.warning("Já votaste!")
+            else:
+                st.subheader("Escolha a sua lista")
+
+                voto = st.radio("Opções:", ["Lista A", "Lista B", "Lista C"])
+
+                if st.button("Confirmar voto"):
+                    register_vote(voto, username)
+                    st.success("Voto registado com sucesso!")
+        else:
+            st.error("Credenciais inválidas")
+
+# =========================
+# REGISTO
+# =========================
+elif choice == "Registar":
+    st.subheader("Criar conta")
+
+    new_user = st.text_input("Número de sócio")
+    new_pass = st.text_input("Senha", type="password")
+
+    if st.button("Registar"):
+        if add_user(new_user, new_pass):
+            st.success("Conta criada com sucesso!")
+        else:
+            st.error("Utilizador já existe")
+
+# =========================
+# ADMIN
+# =========================
+elif choice == "Admin":
+    st.subheader("Resultados")
+
+    df = get_results()
+
+    if not df.empty:
+        st.dataframe(df)
+        st.bar_chart(df.set_index("choice"))
+    else:
+        st.info("Sem votos ainda")
