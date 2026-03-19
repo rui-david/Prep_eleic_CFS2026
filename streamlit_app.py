@@ -58,7 +58,7 @@ def get_results():
 # =========================
 # INTERFACE
 # =========================
-st.title("🗳 Sistema de Votação do Clube")
+st.title("🗳 Eleições do Clube Futebol os Sanjoanenses 2026")
 
 menu = ["Login", "Registar", "Admin"]
 choice = st.sidebar.selectbox("Menu", menu)
@@ -69,7 +69,7 @@ choice = st.sidebar.selectbox("Menu", menu)
 if choice == "Login":
     st.subheader("Login")
 
-    username = st.text_input("Número de sócio")
+    username = st.text_input("Número de Documento")
     password = st.text_input("Senha", type="password")
 
     if st.button("Entrar"):
@@ -95,7 +95,7 @@ if choice == "Login":
 elif choice == "Registar":
     st.subheader("Criar conta")
 
-    new_user = st.text_input("Número de sócio")
+    new_user = st.text_input("Número de Documento")
     new_pass = st.text_input("Senha", type="password")
 
     if st.button("Registar"):
